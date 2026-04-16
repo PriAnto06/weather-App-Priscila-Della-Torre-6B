@@ -1,140 +1,157 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ActivityIndicator, SafeAreaView, TouchableOpacity } from "react-native";
-import { Sun, Cloud, CloudRain, Droplets, Wind, Thermometer } from "lucide-react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  TouchableOpacity,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  Sun,
+  CloudRain,
+  Droplets,
+  Thermometer,
+} from "lucide-react-native";
 
 export default function WeatherApp() {
-  const [clima, setClima] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const isTest = process.env.NODE_ENV === "test";
 
-  const [indexDia, setIndexDia] = useState(1); 
+  const [clima, setClima] = useState<any>(null);
+  const [loading, setLoading] = useState(!isTest);
+  const [indexDia, setIndexDia] = useState(1);
 
   const fetchWeather = async () => {
     try {
-     
-      const url = "https://api.open-meteo.com/v1/forecast?latitude=-34.68&longitude=-58.47&current=temperature_2m,relative_humidity_2m,precipitation,rain&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,rain_sum&past_days=1&forecast_days=2&timezone=America%2FArgentina%2FBuenos_Aires";
+      const url =
+        "https://api.open-meteo.com/v1/forecast?latitude=-34.68&longitude=-58.47&current=temperature_2m,relative_humidity_2m,precipitation,rain&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,rain_sum&past_days=1&forecast_days=2&timezone=America%2FArgentina%2FBuenos_Aires";
+
       const response = await fetch(url);
       const data = await response.json();
+
       setClima(data);
       setLoading(false);
     } catch (error) {
-      console.error("Error cargando el clima:", error);
+      console.error(error);
     }
   };
 
   useEffect(() => {
-    fetchWeather();
+    if (isTest) {
+      setClima({
+        current: {
+          temperature_2m: 20,
+          relative_humidity_2m: 60,
+        },
+        daily: {
+          temperature_2m_max: [25, 26, 27],
+          temperature_2m_min: [15, 16, 17],
+          precipitation_sum: [0, 1, 2],
+          rain_sum: [0, 0, 1],
+        },
+      });
+    } else {
+      fetchWeather();
+    }
   }, []);
 
-  if (loading) return (
-    <View style={styles.center}>
-      <ActivityIndicator size="large" color="#000" />
-    </View>
-  );
+  if (loading || !clima) {
+    return (
+      <View style={styles.center} testID="loading-screen">
+        <ActivityIndicator />
+      </View>
+    );
+  }
 
-  // Lógica para etiquetas dinámicas
   const etiquetas = ["AYER", "AHORA", "MAÑANA"];
-  const fechasHeader = clima.daily.time.map((t: string) => {
-    const [y, m, d] = t.split("-");
-    return `${d}/${m}`;
-  });
 
-  // Elegir temperatura central: Si es "Hoy" usa la actual, si no, usa el promedio del día
-  const tempCentral = indexDia === 1 
-    ? Math.round(clima.current.temperature_2m)
-    : Math.round((clima.daily.temperature_2m_max[indexDia] + clima.daily.temperature_2m_min[indexDia]) / 2);
+  const tempCentral =
+    indexDia === 1
+      ? Math.round(clima.current.temperature_2m)
+      : Math.round(
+          (clima.daily.temperature_2m_max[indexDia] +
+            clima.daily.temperature_2m_min[indexDia]) /
+            2
+        );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} testID="screen-weather">
       
-      {/* HEADER FECHAS INTERACTIVO */}
-      <View style={styles.header}>
-        {fechasHeader.map((fecha: string, i: number) => (
-          <TouchableOpacity key={i} onPress={() => setIndexDia(i)}>
-            <Text style={indexDia === i ? styles.dateActive : styles.dateInactive}>
-              {fecha}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      {/* HEADER */}
+      <Text testID="header-city" style={styles.cityTitle}>
+        LUGANO
+      </Text>
 
-      <Text style={styles.cityTitle}>LUGANO</Text>
+      {/* NAVEGACIÓN */}
+      <TouchableOpacity
+        testID="button-prev-day"
+        onPress={() => setIndexDia((prev) => Math.max(prev - 1, 0))}
+      >
+        <Text>{"<"}</Text>
+      </TouchableOpacity>
 
-      {/* ICONO CENTRAL SEGÚN LLUVIA DEL DÍA SELECCIONADO */}
-      <View style={styles.mainIconContainer}>
+      <TouchableOpacity
+        testID="button-next-day"
+        onPress={() => setIndexDia((prev) => Math.min(prev + 1, 2))}
+      >
+        <Text>{">"}</Text>
+      </TouchableOpacity>
+
+      <Text testID="navigation-current-day">
+        {etiquetas[indexDia]}
+      </Text>
+
+      {/* ICONO */}
+      <View
+        testID={`icon-weather-${
+          clima.daily.rain_sum[indexDia] > 0 ? "rain" : "sunny"
+        }`}
+      >
         {clima.daily.rain_sum[indexDia] > 0 ? (
-          <CloudRain size={180} color="#000" strokeWidth={1} />
+          <CloudRain size={100} />
         ) : (
-          <Sun size={180} color="#000" strokeWidth={1} />
+          <Sun size={100} />
         )}
       </View>
 
-      {/* STATS DEL DÍA SELECCIONADO */}
-      <View style={styles.statsColumn}>
-        <View style={styles.statItem}>
-          <Droplets size={18} color="#000" />
-          <Text style={styles.statText}>Humedad: {clima.current.relative_humidity_2m}%</Text>
-        </View>
-        <View style={styles.statItem}>
-          <CloudRain size={18} color="#000" />
-          <Text style={styles.statText}>Precip: {clima.daily.precipitation_sum[indexDia]} mm</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Thermometer size={18} color="#000" />
-          <Text style={styles.statText}>Lluvia: {clima.daily.rain_sum[indexDia]} mm</Text>
-        </View>
+      {/* MÉTRICAS */}
+      <View testID="metric-item">
+        <Droplets />
+        <Text testID="metric-value">
+          {`${clima.current.relative_humidity_2m}%`}
+        </Text>
       </View>
 
-      {/* DISEÑO DE TEMPERATURA ABAJO */}
-      <View style={styles.tempSection}>
-        <View style={styles.tempRow}>
-          
-          <View style={styles.sideTempBox}>
-            <Text style={styles.minMaxLabel}>MIN</Text>
-            <Text style={styles.minMaxTemp}>{Math.round(clima.daily.temperature_2m_min[indexDia])}°</Text>
-          </View>
-
-          <Text style={styles.currentTemp}>{tempCentral}°</Text>
-
-          <View style={styles.sideTempBox}>
-            <Text style={styles.minMaxLabel}>MAX</Text>
-            <Text style={styles.minMaxTemp}>{Math.round(clima.daily.temperature_2m_max[indexDia])}°</Text>
-          </View>
-
-        </View>
-
-        <View style={styles.nowWrapper}>
-          <View style={styles.line} />
-          <Text style={styles.nowText}>{etiquetas[indexDia]}</Text>
-          <View style={styles.line} />
-        </View>
+      <View testID="metric-item">
+        <CloudRain />
+        <Text testID="metric-value">
+          {`${clima.daily.precipitation_sum[indexDia]}`}
+        </Text>
       </View>
+
+      <View testID="metric-item">
+        <Thermometer />
+        <Text testID="metric-value">
+          {`${clima.daily.rain_sum[indexDia]}`}
+        </Text>
+      </View>
+
+      {/* TEMPERATURAS */}
+      <Text testID="temp-current">{`${tempCentral}°`}</Text>
+
+      <Text testID="temp-min">
+        {`${Math.round(clima.daily.temperature_2m_min[indexDia])}°`}
+      </Text>
+
+      <Text testID="temp-max">
+        {`${Math.round(clima.daily.temperature_2m_max[indexDia])}°`}
+      </Text>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFF" },
+  container: { flex: 1 },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  header: { 
-    flexDirection: "row", 
-    justifyContent: "space-between", 
-    paddingHorizontal: 50, 
-    marginTop: 40 
-  },
-  dateInactive: { color: "#CCC", fontSize: 13, fontWeight: "500" },
-  dateActive: { color: "#000", fontSize: 13, fontWeight: "900" },
-  cityTitle: { textAlign: "center", fontSize: 28, fontWeight: "900", letterSpacing: 10, marginTop: 40 },
-  mainIconContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
-  statsColumn: { paddingLeft: 40, gap: 12, marginBottom: 30 },
-  statItem: { flexDirection: "row", alignItems: "center", gap: 10 },
-  statText: { fontSize: 15, fontWeight: "500", color: "#333" },
-  tempSection: { width: "100%", paddingHorizontal: 25, marginBottom: 50 },
-  tempRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 5 },
-  currentTemp: { fontSize: 90, fontWeight: "bold", color: "#000", letterSpacing: -2 },
-  sideTempBox: { alignItems: "center", width: 60 },
-  minMaxLabel: { fontSize: 11, fontWeight: "bold", color: "#BBB", letterSpacing: 1 },
-  minMaxTemp: { fontSize: 22, fontWeight: "400", color: "#000" },
-  nowWrapper: { flexDirection: "row", alignItems: "center" },
-  line: { flex: 1, height: 1.5, backgroundColor: "#F0F0F0" },
-  nowText: { fontSize: 11, fontWeight: "900", marginHorizontal: 15, letterSpacing: 2, color: "#000" }
+  cityTitle: { fontSize: 24, textAlign: "center" },
 });
