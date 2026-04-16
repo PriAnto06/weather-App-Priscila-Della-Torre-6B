@@ -1,19 +1,16 @@
 {
-  "name": "my-app",
+  "name": "weather-app-lugano",
   "main": "expo-router/entry",
   "version": "1.0.0",
+  "private": true,
   "scripts": {
-    "start": "expo start -c",
-    "dev": "expo start -c",
-    "android": "expo start -c --android",
-    "ios": "expo start -c --ios",
-    "web": "expo start -c --web",
+    "start": "expo start",
+    "dev": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
     "clean": "rm -rf .expo node_modules",
-    "tests": "jest"
-  },
-  "jest": {
-    "preset": "jest-expo",
-    "transformIgnorePatterns": []
+    "test": "jest"
   },
   "dependencies": {
     "@react-navigation/native": "^7.0.0",
@@ -46,14 +43,17 @@
   },
   "devDependencies": {
     "@babel/core": "^7.26.0",
-    "@testing-library/react-native": "^13.3.3",
-    "@types/jest": "29.5.14",
-    "@types/react": "~19.2.10",
+    "typescript": "~5.9.2",
     "jest": "~29.7.0",
     "jest-expo": "~55.0.16",
+    "@types/jest": "29.5.14",
+    "@testing-library/react-native": "^13.3.3",
+    "@types/react": "~19.2.10",
     "prettier": "^3.6.2",
-    "prettier-plugin-tailwindcss": "^0.6.14",
-    "typescript": "~5.9.2"
+    "prettier-plugin-tailwindcss": "^0.6.14"
   },
-  "private": true
+  "jest": {
+    "preset": "jest-expo",
+    "transformIgnorePatterns": []
+  }
 }
