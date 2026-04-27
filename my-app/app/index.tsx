@@ -57,13 +57,11 @@ export default function WeatherApp() {
 
   if (loading || !clima) {
     return (
-      <View style={styles.center} testID="loading-screen">
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator />
       </View>
     );
   }
-
-  const etiquetas = ["AYER", "AHORA", "MAÑANA"];
 
   const tempCentral =
     indexDia === 1
@@ -74,84 +72,126 @@ export default function WeatherApp() {
             2
         );
 
+  // 📅 SOLO FECHAS
+  const fechas = (() => {
+    const hoy = new Date();
+
+    const dias = [-1, 0, 1].map((offset) => {
+      const d = new Date(hoy);
+      d.setDate(hoy.getDate() + offset);
+      return `${d.getDate()}/${d.getMonth() + 1}`;
+    });
+
+    return dias;
+  })();
+
   return (
-    <SafeAreaView style={styles.container} testID="screen-weather">
-      
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: "#0f172a", padding: 20 }}
+    >
       {/* HEADER */}
-      <Text testID="header-city" style={styles.cityTitle}>
+      <Text
+        style={{
+          fontSize: 28,
+          textAlign: "center",
+          color: "white",
+          fontWeight: "bold",
+        }}
+      >
         LUGANO
       </Text>
 
-      {/* NAVEGACIÓN */}
-      <TouchableOpacity
-        testID="button-prev-day"
-        onPress={() => setIndexDia((prev) => Math.max(prev - 1, 0))}
+      {/* FECHAS */}
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-around",
+          marginTop: 20,
+        }}
       >
-        <Text>{"<"}</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        testID="button-next-day"
-        onPress={() => setIndexDia((prev) => Math.min(prev + 1, 2))}
-      >
-        <Text>{">"}</Text>
-      </TouchableOpacity>
-
-      <Text testID="navigation-current-day">
-        {etiquetas[indexDia]}
-      </Text>
+        {fechas.map((f, i) => (
+          <TouchableOpacity key={i} onPress={() => setIndexDia(i)}>
+            <Text
+              style={{
+                color: i === indexDia ? "white" : "#94a3b8",
+                fontWeight: i === indexDia ? "bold" : "normal",
+              }}
+            >
+              {f}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
       {/* ICONO */}
-      <View
-        testID={`icon-weather-${
-          clima.daily.rain_sum[indexDia] > 0 ? "rain" : "sunny"
-        }`}
-      >
+      <View style={{ alignItems: "center", marginVertical: 20 }}>
         {clima.daily.rain_sum[indexDia] > 0 ? (
-          <CloudRain size={100} />
+          <CloudRain size={100} color="white" />
         ) : (
-          <Sun size={100} />
+          <Sun size={100} color="white" />
         )}
       </View>
 
-      {/* MÉTRICAS */}
-      <View testID="metric-item">
-        <Droplets />
-        <Text testID="metric-value">
-          {`${clima.current.relative_humidity_2m}%`}
-        </Text>
-      </View>
+      {/* MÉTRICAS CENTRADAS */}
+      <View style={{ alignItems: "center" }}>
+        <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
+          <Droplets color="white" />
+          <Text style={{ color: "white" }}>
+            {`${clima.current.relative_humidity_2m}%`}
+          </Text>
+        </View>
 
-      <View testID="metric-item">
-        <CloudRain />
-        <Text testID="metric-value">
-          {`${clima.daily.precipitation_sum[indexDia]}`}
-        </Text>
-      </View>
+        <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
+          <CloudRain color="white" />
+          <Text style={{ color: "white" }}>
+            {`${clima.daily.precipitation_sum[indexDia]}`}
+          </Text>
+        </View>
 
-      <View testID="metric-item">
-        <Thermometer />
-        <Text testID="metric-value">
-          {`${clima.daily.rain_sum[indexDia]}`}
-        </Text>
+        <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
+          <Thermometer color="white" />
+          <Text style={{ color: "white" }}>
+            {`${clima.daily.rain_sum[indexDia]}`}
+          </Text>
+        </View>
       </View>
 
       {/* TEMPERATURAS */}
-      <Text testID="temp-current">{`${tempCentral}°`}</Text>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginTop: 20,
+        }}
+      >
+        {/* MIN */}
+        <View style={{ alignItems: "center" }}>
+          <Text style={{ fontSize: 22, color: "white" }}>
+            {`${Math.round(clima.daily.temperature_2m_min[indexDia])}°`}
+          </Text>
+          <Text style={{ color: "#94a3b8" }}>MIN</Text>
+        </View>
 
-      <Text testID="temp-min">
-        {`${Math.round(clima.daily.temperature_2m_min[indexDia])}°`}
-      </Text>
+        {/* ACTUAL */}
+        <Text
+          style={{
+            fontSize: 60,
+            color: "white",
+            fontWeight: "bold",
+          }}
+        >
+          {`${tempCentral}°`}
+        </Text>
 
-      <Text testID="temp-max">
-        {`${Math.round(clima.daily.temperature_2m_max[indexDia])}°`}
-      </Text>
+        {/* MAX */}
+        <View style={{ alignItems: "center" }}>
+          <Text style={{ fontSize: 22, color: "white" }}>
+            {`${Math.round(clima.daily.temperature_2m_max[indexDia])}°`}
+          </Text>
+          <Text style={{ color: "#94a3b8" }}>MAX</Text>
+        </View>
+      </View>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  cityTitle: { fontSize: 24, textAlign: "center" },
-});
