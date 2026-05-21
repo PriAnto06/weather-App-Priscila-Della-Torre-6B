@@ -1,122 +1,180 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-  TouchableOpacity,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  Sun,
-  CloudRain,
-  Droplets,
-  Thermometer,
-} from "lucide-react-native";
+import React, { useEffect, useState } from 'react';
 
-export default function WeatherApp() {
-  const isTest = process.env.NODE_ENV === "test";
+import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { Sun, CloudRain, Droplets, Thermometer } from 'lucide-react-native';
+
+import * as Location from 'expo-location';
+
+export default function Index() {
   const [clima, setClima] = useState<any>(null);
-  const [loading, setLoading] = useState(!isTest);
+
+  const [loading, setLoading] = useState(true);
+
   const [indexDia, setIndexDia] = useState(1);
 
-  const fetchWeather = async () => {
+  const [ubicacion, setUbicacion] = useState('Cargando ubicación...');
+
+  // OBTENER CLIMA
+  const fetchWeather = async (lat: number, lon: number) => {
     try {
-      const url =
-        "https://api.open-meteo.com/v1/forecast?latitude=-34.68&longitude=-58.47&current=temperature_2m,relative_humidity_2m,precipitation,rain&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,rain_sum&past_days=1&forecast_days=2&timezone=America%2FArgentina%2FBuenos_Aires";
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,rain&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,rain_sum&past_days=1&forecast_days=2&timezone=auto`;
 
       const response = await fetch(url);
+
       const data = await response.json();
 
       setClima(data);
+
       setLoading(false);
     } catch (error) {
-      console.error(error);
+      console.log(error);
     }
   };
 
   useEffect(() => {
-    if (isTest) {
-      setClima({
-        current: {
-          temperature_2m: 20,
-          relative_humidity_2m: 60,
-        },
-        daily: {
-          temperature_2m_max: [25, 26, 27],
-          temperature_2m_min: [15, 16, 17],
-          precipitation_sum: [0, 1, 2],
-          rain_sum: [0, 0, 1],
-        },
-      });
-    } else {
-      fetchWeather();
-    }
+    let subscription: any;
+
+    const startTracking = async () => {
+      try {
+        // PEDIR PERMISO
+        const { status } = await Location.requestForegroundPermissionsAsync();
+
+        if (status !== 'granted') {
+          console.log('Permiso denegado');
+          return;
+        }
+
+        // UBICACIÓN EN TIEMPO REAL
+        subscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.High,
+            timeInterval: 2000,
+            distanceInterval: 1,
+          },
+
+          async (location) => {
+            const lat = location.coords.latitude;
+
+            const lon = location.coords.longitude;
+
+            // OBTENER NOMBRE DEL LUGAR
+            try {
+              const direccion = await Location.reverseGeocodeAsync({
+                latitude: lat,
+                longitude: lon,
+              });
+
+              console.log(direccion);
+
+              if (direccion.length > 0) {
+                const lugar =
+                  direccion[0].district ||
+                  direccion[0].city ||
+                  direccion[0].subregion ||
+                  direccion[0].region ||
+                  'Villa Riachuelo';
+
+                setUbicacion(lugar);
+              } else {
+                setUbicacion('Villa Riachuelo');
+              }
+            } catch {
+              setUbicacion('Villa Riachuelo');
+            }
+
+            // ACTUALIZAR CLIMA
+            fetchWeather(lat, lon);
+          }
+        );
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    startTracking();
+
+    return () => {
+      if (subscription) {
+        subscription.remove();
+      }
+    };
   }, []);
 
+  // LOADING
   if (loading || !clima) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator />
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: '#0f172a',
+        }}>
+        <ActivityIndicator size="large" color="white" />
       </View>
     );
   }
 
+  // TEMPERATURA CENTRAL
   const tempCentral =
     indexDia === 1
       ? Math.round(clima.current.temperature_2m)
       : Math.round(
-          (clima.daily.temperature_2m_max[indexDia] +
-            clima.daily.temperature_2m_min[indexDia]) /
-            2
+          (clima.daily.temperature_2m_max[indexDia] + clima.daily.temperature_2m_min[indexDia]) / 2
         );
 
-  // 📅 SOLO FECHAS
+  // FECHAS
   const fechas = (() => {
     const hoy = new Date();
 
-    const dias = [-1, 0, 1].map((offset) => {
+    return [-1, 0, 1].map((offset) => {
       const d = new Date(hoy);
+
       d.setDate(hoy.getDate() + offset);
+
       return `${d.getDate()}/${d.getMonth() + 1}`;
     });
-
-    return dias;
   })();
 
   return (
     <SafeAreaView
-      style={{ flex: 1, backgroundColor: "#0f172a", padding: 20 }}
-    >
-      {/* HEADER */}
+      style={{
+        flex: 1,
+        backgroundColor: '#0f172a',
+        padding: 20,
+      }}>
+      {/* UBICACIÓN */}
       <Text
         style={{
-          fontSize: 28,
-          textAlign: "center",
-          color: "white",
-          fontWeight: "bold",
-        }}
-      >
-        LUGANO
+          color: 'white',
+          fontSize: 32,
+          fontWeight: 'bold',
+          textAlign: 'center',
+          marginTop: 10,
+        }}>
+        {ubicacion}
       </Text>
 
       {/* FECHAS */}
       <View
         style={{
-          flexDirection: "row",
-          justifyContent: "space-around",
-          marginTop: 20,
-        }}
-      >
+          flexDirection: 'row',
+          justifyContent: 'space-around',
+          marginTop: 25,
+        }}>
         {fechas.map((f, i) => (
           <TouchableOpacity key={i} onPress={() => setIndexDia(i)}>
             <Text
               style={{
-                color: i === indexDia ? "white" : "#94a3b8",
-                fontWeight: i === indexDia ? "bold" : "normal",
-              }}
-            >
+                color: i === indexDia ? 'white' : '#94a3b8',
+
+                fontWeight: i === indexDia ? 'bold' : 'normal',
+
+                fontSize: 18,
+              }}>
               {f}
             </Text>
           </TouchableOpacity>
@@ -124,34 +182,74 @@ export default function WeatherApp() {
       </View>
 
       {/* ICONO */}
-      <View style={{ alignItems: "center", marginVertical: 20 }}>
+      <View
+        style={{
+          alignItems: 'center',
+          marginVertical: 30,
+        }}>
         {clima.daily.rain_sum[indexDia] > 0 ? (
-          <CloudRain size={100} color="white" />
+          <CloudRain size={120} color="white" />
         ) : (
-          <Sun size={100} color="white" />
+          <Sun size={120} color="white" />
         )}
       </View>
 
-      {/* MÉTRICAS CENTRADAS */}
-      <View style={{ alignItems: "center" }}>
-        <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
+      {/* MÉTRICAS */}
+      <View style={{ alignItems: 'center' }}>
+        {/* HUMEDAD */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 15,
+          }}>
           <Droplets color="white" />
-          <Text style={{ color: "white" }}>
-            {`${clima.current.relative_humidity_2m}%`}
+
+          <Text
+            style={{
+              color: 'white',
+              fontSize: 18,
+              marginLeft: 10,
+            }}>
+            {clima.current.relative_humidity_2m}%
           </Text>
         </View>
 
-        <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
+        {/* PRECIPITACIÓN */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 15,
+          }}>
           <CloudRain color="white" />
-          <Text style={{ color: "white" }}>
-            {`${clima.daily.precipitation_sum[indexDia]}`}
+
+          <Text
+            style={{
+              color: 'white',
+              fontSize: 18,
+              marginLeft: 10,
+            }}>
+            {clima.daily.precipitation_sum[indexDia]}
           </Text>
         </View>
 
-        <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
+        {/* LLUVIA */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 15,
+          }}>
           <Thermometer color="white" />
-          <Text style={{ color: "white" }}>
-            {`${clima.daily.rain_sum[indexDia]}`}
+
+          <Text
+            style={{
+              color: 'white',
+              fontSize: 18,
+              marginLeft: 10,
+            }}>
+            {clima.daily.rain_sum[indexDia]}
           </Text>
         </View>
       </View>
@@ -159,37 +257,45 @@ export default function WeatherApp() {
       {/* TEMPERATURAS */}
       <View
         style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 20,
-        }}
-      >
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginTop: 35,
+        }}>
         {/* MIN */}
-        <View style={{ alignItems: "center" }}>
-          <Text style={{ fontSize: 22, color: "white" }}>
-            {`${Math.round(clima.daily.temperature_2m_min[indexDia])}°`}
+        <View style={{ alignItems: 'center' }}>
+          <Text
+            style={{
+              fontSize: 24,
+              color: 'white',
+            }}>
+            {Math.round(clima.daily.temperature_2m_min[indexDia])}°
           </Text>
-          <Text style={{ color: "#94a3b8" }}>MIN</Text>
+
+          <Text style={{ color: '#94a3b8' }}>MIN</Text>
         </View>
 
-        {/* ACTUAL */}
+        {/* CENTRAL */}
         <Text
           style={{
-            fontSize: 60,
-            color: "white",
-            fontWeight: "bold",
-          }}
-        >
-          {`${tempCentral}°`}
+            fontSize: 70,
+            color: 'white',
+            fontWeight: 'bold',
+          }}>
+          {tempCentral}°
         </Text>
 
         {/* MAX */}
-        <View style={{ alignItems: "center" }}>
-          <Text style={{ fontSize: 22, color: "white" }}>
-            {`${Math.round(clima.daily.temperature_2m_max[indexDia])}°`}
+        <View style={{ alignItems: 'center' }}>
+          <Text
+            style={{
+              fontSize: 24,
+              color: 'white',
+            }}>
+            {Math.round(clima.daily.temperature_2m_max[indexDia])}°
           </Text>
-          <Text style={{ color: "#94a3b8" }}>MAX</Text>
+
+          <Text style={{ color: '#94a3b8' }}>MAX</Text>
         </View>
       </View>
     </SafeAreaView>
